@@ -6,7 +6,7 @@
   "license": "ISC",
   "author": "OsirisFrik",
   "bin": {
-    "setpro": "./index.mjs"
+    "uppro": "./index.mjs"
   },
   "files": [
     "index.mjs",
@@ -15,7 +15,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

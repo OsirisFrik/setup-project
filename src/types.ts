@@ -67,26 +67,24 @@ export interface Step {
   config: StepConfig;
 }
 
-export interface Profile {
+export interface Preset {
   id: string;
   name: string;
   description: string;
-  version: string;
   inherits?: string;
   dependencies: Dependencies;
   files: Record<string, string>;
   steps: Step[];
 }
 
-export interface ResolvedProfile extends Profile {
+export interface ResolvedPreset extends Preset {
   _resolved: true;
 }
 
-export interface ProfileMetadata {
+export interface PresetMetadata {
   id: string;
   name: string;
   description: string;
-  version: string;
   inherits?: string;
 }
 
@@ -127,8 +125,7 @@ export interface ExecutionResult {
 
 export interface HistoryEntry {
   timestamp: string;
-  profileId: string;
-  profileVersion: string;
+  presetId: string;
   projectRoot: string;
   packageManager: PackageManagerName;
   changes: {

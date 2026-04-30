@@ -1,10 +1,10 @@
 import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { getHistoryDir, ensureHistoryDir } from '../utils/paths.ts';
-import type { HistoryEntry, Profile } from '../types.ts';
+import type { HistoryEntry, Preset } from '../types.ts';
 
 export function recordApplication(
-  profile: Profile,
+  preset: Preset,
   changes: {
     filesCreated: string[];
     filesModified: string[];
@@ -17,8 +17,7 @@ export function recordApplication(
   const timestamp = new Date().toISOString();
   const entry: HistoryEntry = {
     timestamp,
-    profileId: profile.id,
-    profileVersion: profile.version,
+    presetId: preset.id,
     projectRoot: process.cwd(),
     packageManager: 'npm',
     changes,

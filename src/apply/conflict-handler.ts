@@ -4,17 +4,17 @@ import type {
   Conflict,
   ConflictDecision,
   ConflictResolution,
-  Profile,
+  Preset,
 } from '../types.ts';
 import { multiSelect } from '../ui.ts';
 
 export function detectConflicts(
-  profile: Profile,
+  preset: Preset,
   projectRoot: string
 ): Conflict[] {
   const conflicts: Conflict[] = [];
 
-  for (const [destination] of Object.entries(profile.files)) {
+  for (const [destination] of Object.entries(preset.files)) {
     const filePath = join(projectRoot, destination);
 
     if (existsSync(filePath)) {

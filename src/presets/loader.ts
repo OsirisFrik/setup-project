@@ -1,101 +1,100 @@
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
-import { getProfilePath, getProfilesDir } from '../utils/paths.ts';
+import { getPresetPath, getPresetsDir } from '../utils/paths.ts';
 import type {
-  Profile,
-  ResolvedProfile,
-  ProfileMetadata,
+  Preset,
+  ResolvedPreset,
+  PresetMetadata,
   ValidationError,
 } from '../types.ts';
 
-export function loadProfile(profileId: string): Profile {
-  const profilePath = getProfilePath(profileId);
-  const profileJsonPath = join(profilePath, 'profile.json');
+export function loadPreset(presetId: string): Preset {
+  const presetPath = getPresetPath(presetId);
+  const presetJsonPath = join(presetPath, 'preset.json');
 
-  if (!existsSync(profileJsonPath)) {
-    throw new Error(`Profile not found: ${profileId}`);
+  if (!existsSync(presetJsonPath)) {
+    throw new Error(`Preset not found: ${presetId}`);
   }
 
   try {
-    const content = readFileSync(profileJsonPath, 'utf-8');
-    const profile = JSON.parse(content) as Profile;
+    const content = readFileSync(presetJsonPath, 'utf-8');
+    const preset = JSON.parse(content) as Preset;
 
-    const errors = validateProfile(profile);
+    const errors = validatePreset(preset);
     if (errors.length) {
       throw new Error(
-        `Invalid profile: ${errors.map((e) => `${e.field}: ${e.message}`).join(', ')}`
+        `Invalid preset: ${errors.map((e) => `${e.field}: ${e.message}`).join(', ')}`
       );
     }
 
-    return profile;
+    return preset;
   } catch (error) {
     if (error instanceof Error) {
-      throw new Error(`Failed to load profile ${profileId}: ${error.message}`);
+      throw new Error(`Failed to load preset ${presetId}: ${error.message}`);
     }
     throw error;
   }
 }
 
-export function resolveInheritance(profile: Profile): ResolvedProfile {
-  const resolved: ResolvedProfile = { ...profile, _resolved: true };
+export function resolveInheritance(preset: Preset): ResolvedPreset {
+  const resolved: ResolvedPreset = { ...preset, _resolved: true };
 
-  if (!profile.inherits) {
+  if (!preset.inherits) {
     return resolved;
   }
 
   try {
-    const parentProfile = loadProfile(profile.inherits);
-    const parentResolved = resolveInheritance(parentProfile);
+    const parentPreset = loadPreset(preset.inherits);
+    const parentResolved = resolveInheritance(parentPreset);
 
     resolved.dependencies = {
       prod: [
         ...parentResolved.dependencies.prod,
-        ...profile.dependencies.prod,
+        ...preset.dependencies.prod,
       ],
-      dev: [...parentResolved.dependencies.dev, ...profile.dependencies.dev],
+      dev: [...parentResolved.dependencies.dev, ...preset.dependencies.dev],
     };
 
     resolved.files = {
       ...parentResolved.files,
-      ...profile.files,
+      ...preset.files,
     };
 
     resolved.steps = [
       ...parentResolved.steps,
-      ...profile.steps,
+      ...preset.steps,
     ];
   } catch (error) {
     throw new Error(
-      `Failed to resolve inheritance for ${profile.id}: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to resolve inheritance for ${preset.id}: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 
   return resolved;
 }
 
-export function listProfiles(): ProfileMetadata[] {
-  const profilesDir = getProfilesDir();
+export function listPresets(): PresetMetadata[] {
+  const presetsDir = getPresetsDir();
 
-  if (!existsSync(profilesDir)) {
+  if (!existsSync(presetsDir)) {
     return [];
   }
 
   try {
-    const dirs = readdirSync(profilesDir, { withFileTypes: true });
+    const dirs = readdirSync(presetsDir, { withFileTypes: true });
 
-    const metadata: ProfileMetadata[] = [];
+    const metadata: PresetMetadata[] = [];
 
     for (const dir of dirs) {
       if (!dir.isDirectory()) continue;
 
       try {
-        const profile = loadProfile(dir.name);
+        const preset = loadPreset(dir.name);
         metadata.push({
-          id: profile.id,
-          name: profile.name,
-          description: profile.description,
-          version: profile.version,
-          inherits: profile.inherits,
+          id: preset.id,
+          name: preset.name,
+          description: preset.description,
+          inherits: preset.inherits,
         });
       } catch {
         continue;
@@ -108,14 +107,14 @@ export function listProfiles(): ProfileMetadata[] {
   }
 }
 
-export function validateProfile(profile: unknown): ValidationError[] {
+export function validatePreset(preset: unknown): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  if (typeof profile !== 'object' || profile === null) {
-    return [{ field: 'root', message: 'Profile must be an object' }];
+  if (typeof preset !== 'object' || preset === null) {
+    return [{ field: 'root', message: 'Preset must be an object' }];
   }
 
-  const p = profile as Record<string, unknown>;
+  const p = preset as Record<string, unknown>;
 
   if (typeof p.id !== 'string' || !p.id) {
     errors.push({ field: 'id', message: 'id is required and must be a string' });
@@ -132,13 +131,6 @@ export function validateProfile(profile: unknown): ValidationError[] {
     errors.push({
       field: 'description',
       message: 'description must be a string',
-    });
-  }
-
-  if (typeof p.version !== 'string' || !p.version) {
-    errors.push({
-      field: 'version',
-      message: 'version is required and must be a string',
     });
   }
 
@@ -222,19 +214,19 @@ function isValidStep(step: unknown): boolean {
   );
 }
 
-export function detectVariablesInProfile(profile: Profile): string[] {
+export function detectVariablesInPreset(preset: Preset): string[] {
   const variables = new Set<string>();
 
   const variableRegex = /\{\{(\w+)\}\}/g;
 
-  for (const filePath of Object.values(profile.files)) {
+  for (const filePath of Object.values(preset.files)) {
     const matches = filePath.matchAll(variableRegex);
     for (const match of matches) {
       variables.add(match[1]);
     }
   }
 
-  for (const step of profile.steps) {
+  for (const step of preset.steps) {
     if (step.type === 'run-command' && 'command' in step.config) {
       const config = step.config as unknown as { command: string };
       const matches = config.command.matchAll(variableRegex);

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-`setup-project` is a Node.js CLI tool (`setpro`) for managing and applying reusable project configuration profiles. Profiles live in `~/.setuppro/profiles/` and support inheritance, template variable substitution (`{{variableName}}`), and sequential step execution with dependency ordering.
+`setup-project` is a Node.js CLI tool (`uppro`) for managing and applying reusable project configuration presets. Presets live in `~/.setuppro/presets/` and support inheritance, template variable substitution (`{{variableName}}`), and sequential step execution with dependency ordering.
 
 **Requires:** Node.js >= 22.6.0
 
@@ -31,22 +31,24 @@ No test runner is configured yet — Vitest is planned (see PLAN.md).
 **Entry point:** `index.mjs` — checks Node version, then loads `dist/main.js` if it exists, otherwise imports `src/main.ts` directly via Node's `--experimental-strip-types` flag (no compile step required during development).
 
 **Existing source files:**
-- `src/main.ts` — CLI entry: `parseArgs()` (parses `--profile`/`-p`, `--yes`, `--dry-run`, `--verbose`, `--clear-cache`), then `main()` which currently prints the banner and parsed args
+
+- `src/main.ts` — CLI entry: `parseArgs()` (parses preset name, `--yes`, `--dry-run`, `--verbose`), command routing to `handlePreset()` / `handleApply()`
 - `src/colors.ts` — ANSI color helpers (`bold`, `dim`, `green`, `yellow`, `cyan`, `red`, `magenta`, `gray`, `muted`, `white`, `pink`); respects `NO_COLOR` / `FORCE_COLOR` env vars; also exports `SPINNER`, `HIDE_CURSOR`, `SHOW_CURSOR`
 - `src/ui.ts` — `printBanner(version)` (animated wave logo), `multiSelect<T>(items, opts)` (raw-stdin multi-select, no external deps), `formatTime(ms)`
 
 **Planned source layout** (see PLAN.md for full detail):
-- `src/types.ts` — shared interfaces: `Profile`, `Step`, `PackageManager`, `ConflictResolution`
-- `src/profiles/loader.ts` — loads and recursively resolves profile inheritance
+
+- `src/types.ts` — shared interfaces: `Preset`, `Step`, `PackageManager`, `ConflictResolution`
+- `src/presets/loader.ts` — loads and recursively resolves preset inheritance
 - `src/variables/prompter.ts` — detects `{{variable}}` placeholders; prompts user interactively
 - `src/apply/` — conflict detection, template processing, step execution, file writing
 - `src/package-manager/detector.ts` — auto-detects npm/yarn/pnpm/bun from lock files
 - `src/utils/paths.ts` — helpers for `~/.setuppro/` directory paths
-- `src/history/tracker.ts` — records applied profiles to `~/.setuppro/.history/`
+- `src/history/tracker.ts` — records applied presets to `~/.setuppro/.history/`
 
-**Profile schema** (stored as `~/.setuppro/profiles/<id>/profile.json`): supports `inherits` for parent profile chaining; `files` map destination→template; `steps` array with `type`, `dependsOn`, and `order` fields.
+**Preset schema** (stored as `~/.setuppro/presets/<id>/preset.json`): supports `inherits` for parent preset chaining; `files` map destination→template; `steps` array with `type`, `dependsOn`, and `order` fields.
 
-**Execution flow** (planned, see PLAN.md): load profile → detect package manager → detect/prompt variables → detect conflicts → dry-run preview → confirm → execute steps → record history → summary.
+**Execution flow** (planned, see PLAN.md): load preset → detect package manager → detect/prompt variables → detect conflicts → dry-run preview → confirm → execute steps → record history → summary.
 
 ## Known Issues
 

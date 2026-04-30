@@ -1,29 +1,33 @@
+import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
 
-import { printBanner, formatTime } from './ui.ts';
-import { resolveInheritance, loadProfile, listProfiles } from './profiles/loader.ts';
-import { detectPackageManager } from './package-manager/detector.ts';
-import { promptVariables } from './variables/prompter.ts';
 import { detectConflicts, resolveConflicts } from './apply/conflict-handler.ts';
 import { executeSteps } from './apply/step-executor.ts';
+import { green, yellow, red, cyan } from './colors.ts';
+import { recordApplication } from './history/tracker.ts';
+import { detectPackageManager } from './package-manager/detector.ts';
+import {
+  createPresetInteractive,
+  editPreset,
+  deletePreset
+} from './preset-creator.ts';
+import {
+  resolveInheritance,
+  loadPreset,
+  listPresets
+} from './presets/loader.ts';
+import type { ExecutionContext } from './types.ts';
+import { printBanner, formatTime } from './ui.ts';
 import {
   ensureSetupProDir,
   ensureHistoryDir,
   getProjectRoot,
-  getProfilePath,
-  setCustomProfileSource,
+  getPresetPath,
+  setCustomPresetSource
 } from './utils/paths.ts';
-import { recordApplication } from './history/tracker.ts';
-import {
-  createProfileInteractive,
-  editProfile,
-  deleteProfile,
-} from './profile-creator.ts';
-import type { ExecutionContext } from './types.ts';
-import { green, yellow, red, cyan } from './colors.ts';
+import { promptVariables } from './variables/prompter.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VERSION: string = (() => {
@@ -38,14 +42,14 @@ const VERSION: string = (() => {
   return '0.0.0';
 })();
 
-type Command = 'profile' | 'apply' | 'help';
-type ProfileAction = 'create' | 'list' | 'delete' | 'edit' | 'open' | 'detail';
+type Command = 'preset' | 'apply' | 'help';
+type PresetAction = 'create' | 'list' | 'delete' | 'edit' | 'open' | 'detail';
 
 interface CliArgs {
   command: Command;
-  profileName?: string;
-  profileAction?: ProfileAction;
-  profileTarget?: string;
+  presetName?: string;
+  presetAction?: PresetAction;
+  presetTarget?: string;
   source?: string;
   packageManager?: string;
   autoYes: boolean;
@@ -63,7 +67,7 @@ function parseArgs(): CliArgs {
 
   const first = raw[0];
   const command: Command =
-    first === 'profile' || first === 'apply' ? first : 'help';
+    first === 'preset' || first === 'apply' ? first : 'help';
 
   const consumed = new Set<number>([0]);
   let source: string | undefined;
@@ -96,30 +100,37 @@ function parseArgs(): CliArgs {
     }
   }
 
-  const result: CliArgs = { command, source, packageManager, autoYes, dryRun, verbose };
+  const result: CliArgs = {
+    command,
+    source,
+    packageManager,
+    autoYes,
+    dryRun,
+    verbose
+  };
 
   if (command === 'apply') {
     for (let i = 1; i < raw.length; i++) {
       if (!consumed.has(i) && !raw[i].startsWith('-')) {
-        result.profileName = raw[i];
+        result.presetName = raw[i];
         break;
       }
     }
   }
 
-  if (command === 'profile') {
+  if (command === 'preset') {
     const nameFlags = new Set(['--delete', '--edit', '--open', '--detail']);
     for (let i = 1; i < raw.length; i++) {
       if (consumed.has(i)) continue;
       const a = raw[i];
       if (a === '--create') {
-        result.profileAction = 'create';
+        result.presetAction = 'create';
       } else if (a === '--list') {
-        result.profileAction = 'list';
+        result.presetAction = 'list';
       } else if (nameFlags.has(a)) {
-        result.profileAction = a.slice(2) as ProfileAction;
+        result.presetAction = a.slice(2) as PresetAction;
         if (raw[i + 1] && !raw[i + 1].startsWith('-')) {
-          result.profileTarget = raw[i + 1];
+          result.presetTarget = raw[i + 1];
         }
         break;
       }
@@ -129,18 +140,18 @@ function parseArgs(): CliArgs {
   return result;
 }
 
-function openProfileInEditor(profileId: string): void {
-  const profilePath = getProfilePath(profileId);
-  const vscode = spawnSync('code', [profilePath], { shell: true });
+function openPresetInEditor(presetId: string): void {
+  const presetPath = getPresetPath(presetId);
+  const vscode = spawnSync('code', [presetPath], { shell: true });
   if (vscode.status === 0) return;
 
   const editor = process.env['EDITOR'];
   if (editor) {
-    const r = spawnSync(editor, [profilePath], { shell: true });
+    const r = spawnSync(editor, [presetPath], { shell: true });
     if (r.status === 0) return;
   }
 
-  console.log(`${cyan('Profile directory:')} ${profilePath}`);
+  console.log(`${cyan('Preset directory:')} ${presetPath}`);
 }
 
 function printHelp(): void {
@@ -148,20 +159,20 @@ function printHelp(): void {
 ${cyan('setup-project CLI')} v${VERSION}
 
 ${green('USAGE')}
-  setpro <command> [options]
+  uppro <command> [options]
 
 ${green('COMMANDS')}
-  profile            Manage profiles (use flags below)
-  apply <profile>    Apply a profile to the current project
+  preset             Manage presets (use flags below)
+  apply <preset>     Apply a preset to the current project
   help               Show this help message
 
-${green('PROFILE FLAGS')}
-  --create           Create a new profile interactively
-  --list             List all available profiles
-  --delete <name>    Delete a profile
-  --edit <name>      Edit a profile
-  --open <name>      Open profile directory in editor
-  --detail <name>    Show profile details
+${green('PRESET FLAGS')}
+  --create           Create a new preset interactively
+  --list             List all available presets
+  --delete <name>    Delete a preset
+  --edit <name>      Edit a preset
+  --open <name>      Open preset directory in editor
+  --detail <name>    Show preset details
 
 ${green('APPLY FLAGS')}
   --dry-run          Preview changes without applying
@@ -169,7 +180,7 @@ ${green('APPLY FLAGS')}
   --pm, --package-manager <name>  Package manager (npm, yarn, pnpm, bun)
 
 ${green('GLOBAL FLAGS')}
-  --source <dir>     Custom profiles directory
+  --source <dir>     Custom presets directory
   --pm, --package-manager <name>  Package manager to use
   --yes, -y          Skip confirmation prompts
   --dry-run          Preview without applying
@@ -177,83 +188,77 @@ ${green('GLOBAL FLAGS')}
   -h, --help         Show this help message
 
 ${green('EXAMPLES')}
-  setpro profile --create
-  setpro profile --list
-  setpro profile --delete my-profile
-  setpro profile --detail react-base
-  setpro apply react-base
-  setpro apply react-base --dry-run
-  setpro apply react-base --pm pnpm
-  setpro apply react-base --source ./my-profiles
+  uppro preset --create
+  uppro preset --list
+  uppro preset --delete my-preset
+  uppro preset --detail react-base
+  uppro apply react-base
+  uppro apply react-base --dry-run
+  uppro apply react-base --pm pnpm
+  uppro apply react-base --source ./my-presets
 `);
 }
 
-function printProfileHelp(): void {
+function printPresetHelp(): void {
   console.log(`
-${cyan('Profile Management')}
+${cyan('Preset Management')}
 
 ${green('USAGE')}
-  setpro profile <flag> [name]
+  uppro preset <flag> [name]
 
 ${green('FLAGS')}
-  --create           Create a new profile
-  --list             List all profiles
-  --delete <name>    Delete a profile
-  --edit <name>      Edit a profile
-  --open <name>      Open profile in editor
-  --detail <name>    Show profile details
+  --create           Create a new preset
+  --list             List all presets
+  --delete <name>    Delete a preset
+  --edit <name>      Edit a preset
+  --open <name>      Open preset in editor
+  --detail <name>    Show preset details
 
 ${green('EXAMPLES')}
-  setpro profile --create
-  setpro profile --list
-  setpro profile --delete my-profile
-  setpro profile --edit react-base
-  setpro profile --open react-base
-  setpro profile --detail react-base
+  uppro preset --create
+  uppro preset --list
+  uppro preset --delete my-preset
+  uppro preset --edit react-base
+  uppro preset --open react-base
+  uppro preset --detail react-base
 `);
 }
 
 async function handleList(): Promise<void> {
-  console.log(`\n${cyan('Available Profiles:')}\n`);
+  console.log(`\n${cyan('Available Presets:')}\n`);
 
-  const profiles = listProfiles();
+  const presets = listPresets();
 
-  if (!profiles.length) {
-    console.log(`  ${yellow('No profiles found')}`);
+  if (!presets.length) {
+    console.log(`  ${yellow('No presets found')}`);
     return;
   }
 
-  for (const profile of profiles) {
-    const inherits = profile.inherits
-      ? ` ${cyan('(inherits:')} ${profile.inherits}${cyan(')')}`
+  for (const preset of presets) {
+    const inherits = preset.inherits
+      ? ` ${cyan('(inherits:')} ${preset.inherits}${cyan(')')}`
       : '';
-    console.log(`  ${green(profile.id)}`);
-    console.log(`    ${profile.name}`);
-    console.log(`    ${profile.description}${inherits}\n`);
+    console.log(`  ${green(preset.id)}`);
+    console.log(`    ${preset.name}`);
+    console.log(`    ${preset.description}${inherits}\n`);
   }
 }
 
-async function handleDetail(profileId: string): Promise<void> {
+async function handleDetail(presetId: string): Promise<void> {
   try {
-    const profile = loadProfile(profileId);
-    const resolved = resolveInheritance(profile);
+    const preset = loadPreset(presetId);
+    const resolved = resolveInheritance(preset);
 
-    console.log(`\n${cyan(profile.name)} (${profileId})`);
-    console.log(`  Version: ${profile.version}`);
-    if (profile.inherits) {
-      console.log(`  Inherits: ${profile.inherits}`);
+    console.log(`\n${cyan(preset.name)} (${presetId})`);
+    if (preset.inherits) {
+      console.log(`  Inherits: ${preset.inherits}`);
     }
-    console.log(`  ${profile.description}`);
+    console.log(`  ${preset.description}`);
 
-    if (
-      resolved.dependencies.prod.length ||
-      resolved.dependencies.dev.length
-    ) {
+    if (resolved.dependencies.prod.length || resolved.dependencies.dev.length) {
       console.log(`\n  ${cyan('Dependencies:')}`);
       if (resolved.dependencies.prod.length) {
-        console.log(
-          `    Production: ${resolved.dependencies.prod.join(', ')}`
-        );
+        console.log(`    Production: ${resolved.dependencies.prod.join(', ')}`);
       }
       if (resolved.dependencies.dev.length) {
         console.log(`    Development: ${resolved.dependencies.dev.join(', ')}`);
@@ -283,43 +288,41 @@ async function handleDetail(profileId: string): Promise<void> {
   }
 }
 
-async function handleProfile(args: CliArgs): Promise<void> {
-  const { profileAction, profileTarget } = args;
+async function handlePreset(args: CliArgs): Promise<void> {
+  const { presetAction, presetTarget } = args;
 
   const requiresTarget = (action: string) =>
     ['delete', 'edit', 'open', 'detail'].includes(action);
 
-  if (!profileAction) {
-    printProfileHelp();
+  if (!presetAction) {
+    printPresetHelp();
     return;
   }
 
-  if (requiresTarget(profileAction) && !profileTarget) {
-    console.error(
-      `${red('Error:')} --${profileAction} requires a profile name`
-    );
+  if (requiresTarget(presetAction) && !presetTarget) {
+    console.error(`${red('Error:')} --${presetAction} requires a preset name`);
     process.exit(1);
   }
 
   try {
-    switch (profileAction) {
+    switch (presetAction) {
       case 'create':
-        await createProfileInteractive();
+        await createPresetInteractive();
         break;
       case 'list':
         await handleList();
         break;
       case 'delete':
-        await deleteProfile(profileTarget!);
+        await deletePreset(presetTarget!);
         break;
       case 'edit':
-        await editProfile(profileTarget!);
+        await editPreset(presetTarget!);
         break;
       case 'open':
-        openProfileInEditor(profileTarget!);
+        openPresetInEditor(presetTarget!);
         break;
       case 'detail':
-        await handleDetail(profileTarget!);
+        await handleDetail(presetTarget!);
         break;
     }
   } catch (error) {
@@ -331,15 +334,15 @@ async function handleProfile(args: CliArgs): Promise<void> {
 }
 
 async function handleApply(args: CliArgs): Promise<void> {
-  if (!args.profileName) {
+  if (!args.presetName) {
     console.error(
-      `${red('Error:')} Profile name is required. Usage: setpro apply <profile>`
+      `${red('Error:')} Preset name is required. Usage: uppro apply <preset>`
     );
     process.exit(1);
   }
 
   if (args.source) {
-    setCustomProfileSource(args.source);
+    setCustomPresetSource(args.source);
   }
 
   const startTime = Date.now();
@@ -348,9 +351,9 @@ async function handleApply(args: CliArgs): Promise<void> {
     ensureSetupProDir();
     ensureHistoryDir();
 
-    console.log(`\n${cyan('Loading profile...')} ${args.profileName}`);
-    const profile = loadProfile(args.profileName);
-    const resolved = resolveInheritance(profile);
+    console.log(`\n${cyan('Loading preset...')} ${args.presetName}`);
+    const preset = loadPreset(args.presetName);
+    const resolved = resolveInheritance(preset);
 
     const projectRoot = getProjectRoot();
     console.log(`${cyan('Project root:')} ${projectRoot}`);
@@ -361,7 +364,7 @@ async function handleApply(args: CliArgs): Promise<void> {
           name: args.packageManager as any,
           installCommand: '',
           addCommand: '',
-          version: '0.0.0',
+          version: '0.0.0'
         }
       : detectPackageManager(projectRoot);
 
@@ -397,7 +400,7 @@ async function handleApply(args: CliArgs): Promise<void> {
       packageManager,
       variables,
       dryRun: args.dryRun,
-      verbose: args.verbose,
+      verbose: args.verbose
     };
 
     console.log(`\n${cyan('Executing steps...')}`);
@@ -409,14 +412,16 @@ async function handleApply(args: CliArgs): Promise<void> {
     }
 
     if (result.stepsExecuted.length) {
-      console.log(`\n${green('✓')} Profile applied successfully`);
-      console.log(`  ${green(String(result.stepsExecuted.length))} steps executed`);
+      console.log(`\n${green('✓')} Preset applied successfully`);
+      console.log(
+        `  ${green(String(result.stepsExecuted.length))} steps executed`
+      );
 
-      recordApplication(profile, {
+      recordApplication(preset, {
         filesCreated: [],
         filesModified: [],
         dependenciesInstalled: [],
-        stepsExecuted: result.stepsExecuted,
+        stepsExecuted: result.stepsExecuted
       });
     }
 
@@ -431,16 +436,15 @@ async function handleApply(args: CliArgs): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  await printBanner(VERSION);
-
   const args = parseArgs();
 
   switch (args.command) {
     case 'help':
+      await printBanner(VERSION);
       printHelp();
       break;
-    case 'profile':
-      await handleProfile(args);
+    case 'preset':
+      await handlePreset(args);
       break;
     case 'apply':
       await handleApply(args);

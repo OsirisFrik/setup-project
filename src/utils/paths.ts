@@ -4,29 +4,29 @@ import { mkdirSync } from 'fs';
 
 const SETUP_PRO_DIR_NAME = '.setuppro';
 
-let customProfileSource: string | null = null;
+let customPresetSource: string | null = null;
 
-export function setCustomProfileSource(source: string): void {
-  customProfileSource = source;
+export function setCustomPresetSource(source: string): void {
+  customPresetSource = source;
 }
 
-export function getCustomProfileSource(): string | null {
-  return customProfileSource;
+export function getCustomPresetSource(): string | null {
+  return customPresetSource;
 }
 
 export function getSetupProDir(): string {
   return join(homedir(), SETUP_PRO_DIR_NAME);
 }
 
-export function getProfilesDir(): string {
-  if (customProfileSource) {
-    return customProfileSource;
+export function getPresetsDir(): string {
+  if (customPresetSource) {
+    return customPresetSource;
   }
-  return join(getSetupProDir(), 'profiles');
+  return join(getSetupProDir(), 'presets');
 }
 
-export function getProfilePath(profileId: string): string {
-  return join(getProfilesDir(), profileId);
+export function getPresetPath(presetId: string): string {
+  return join(getPresetsDir(), presetId);
 }
 
 export function getCacheDir(): string {
@@ -59,8 +59,8 @@ export function ensureSetupProDir(): void {
   mkdirSync(dir, { recursive: true });
 }
 
-export function ensureProfilesDir(): void {
-  const dir = getProfilesDir();
+export function ensurePresetsDir(): void {
+  const dir = getPresetsDir();
   mkdirSync(dir, { recursive: true });
 }
 
