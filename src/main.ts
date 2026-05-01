@@ -144,7 +144,7 @@ function openPresetInEditor(presetId: string): void {
   const presetPath = getPresetPath(presetId);
   const editor = process.env['EDITOR'] || 'code';
   const options = process.platform === 'win32' ? { shell: true } : {};
-  const r = spawnSync(`${editor} ${presetPath}`, options);
+  const r = spawnSync(editor, [presetPath], options);
 
   if (r.status === 0) return;
 
