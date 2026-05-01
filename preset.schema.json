@@ -76,7 +76,12 @@
           },
           "type": {
             "type": "string",
-            "enum": ["install-deps", "run-command", "generate-from-template", "copy-file"],
+            "enum": [
+              "install-deps",
+              "run-command",
+              "generate-from-template",
+              "copy-file"
+            ],
             "description": "Type of step to execute"
           },
           "description": {
@@ -111,11 +116,11 @@
                     "properties": {
                       "prod": {
                         "type": "array",
-                        "items": {"type": "string"}
+                        "items": { "type": "string" }
                       },
                       "dev": {
                         "type": "array",
-                        "items": {"type": "string"}
+                        "items": { "type": "string" }
                       }
                     }
                   }
@@ -190,8 +195,7 @@
               }
             ]
           }
-        },
-        "additionalProperties": false
+        }
       }
     }
   }
