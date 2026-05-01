@@ -62,6 +62,18 @@ export async function createPresetInteractive(): Promise<void> {
       .filter(Boolean);
   }
 
+  // Auto-add install-deps step if dependencies exist
+  if (preset.dependencies.prod.length || preset.dependencies.dev.length) {
+    preset.steps.push({
+      id: 'install-deps',
+      type: 'install-deps',
+      description: 'Install dependencies',
+      config: {
+        type: 'install-deps',
+      },
+    });
+  }
+
   ensurePresetsDir();
   const presetPath = getPresetPath(id);
   mkdirSync(presetPath, { recursive: true });
@@ -101,6 +113,24 @@ export async function editPreset(presetId: string): Promise<void> {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
+    }
+
+    // Update or add install-deps step based on dependencies
+    const hasDependencies =
+      preset.dependencies.prod.length || preset.dependencies.dev.length;
+    const hasInstallStep = preset.steps.some((s) => s.id === 'install-deps');
+
+    if (hasDependencies && !hasInstallStep) {
+      preset.steps.unshift({
+        id: 'install-deps',
+        type: 'install-deps',
+        description: 'Install dependencies',
+        config: {
+          type: 'install-deps',
+        },
+      });
+    } else if (!hasDependencies && hasInstallStep) {
+      preset.steps = preset.steps.filter((s) => s.id !== 'install-deps');
     }
   }
 
