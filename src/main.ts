@@ -142,14 +142,11 @@ function parseArgs(): CliArgs {
 
 function openPresetInEditor(presetId: string): void {
   const presetPath = getPresetPath(presetId);
-  const vscode = spawnSync('code', [presetPath], { shell: true });
-  if (vscode.status === 0) return;
+  const editor = process.env['EDITOR'] || 'code';
+  const options = process.platform === 'win32' ? { shell: true } : {};
+  const r = spawnSync(`${editor} ${presetPath}`, options);
 
-  const editor = process.env['EDITOR'];
-  if (editor) {
-    const r = spawnSync(editor, [presetPath], { shell: true });
-    if (r.status === 0) return;
-  }
+  if (r.status === 0) return;
 
   console.log(`${cyan('Preset directory:')} ${presetPath}`);
 }
