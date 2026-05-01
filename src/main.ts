@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -143,8 +143,14 @@ function parseArgs(): CliArgs {
 function openPresetInEditor(presetId: string): void {
   const presetPath = getPresetPath(presetId);
   const editor = process.env['EDITOR'] || 'code';
-  const options = process.platform === 'win32' ? { shell: true } : {};
-  const r = spawnSync(editor, [presetPath], options);
+
+  let r: SpawnSyncReturns<unknown>;
+
+  if (process.platform === 'win32') {
+    r = spawnSync(`${editor} ${presetPath}`, { shell: true });
+  } else {
+    r = spawnSync(editor, [presetPath]);
+  }
 
   if (r.status === 0) return;
 
