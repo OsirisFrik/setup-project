@@ -1,0 +1,199 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Setup Project Preset Schema",
+  "description": "Schema for setup-project preset configuration files",
+  "type": "object",
+  "required": ["id", "name", "description", "dependencies", "files", "steps"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the preset",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name of the preset",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of what this preset does"
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic version of the preset",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "inherits": {
+      "type": "string",
+      "description": "ID of parent preset to inherit from",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "dependencies": {
+      "type": "object",
+      "description": "Package dependencies to install",
+      "required": ["prod", "dev"],
+      "properties": {
+        "prod": {
+          "type": "array",
+          "description": "Production dependencies (npm packages)",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "dev": {
+          "type": "array",
+          "description": "Development dependencies (npm packages)",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "files": {
+      "type": "object",
+      "description": "Files to create/copy (destination -> template path mapping)",
+      "additionalProperties": {
+        "type": "string",
+        "description": "Path to template file relative to preset directory"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "description": "Sequential steps to execute during preset application",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "config"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for this step",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["install-deps", "run-command", "generate-from-template", "copy-file"],
+            "description": "Type of step to execute"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of what this step does"
+          },
+          "order": {
+            "type": "integer",
+            "description": "Execution order (lower numbers execute first)",
+            "minimum": 0
+          },
+          "dependsOn": {
+            "type": "array",
+            "description": "IDs of steps this depends on",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            }
+          },
+          "config": {
+            "oneOf": [
+              {
+                "type": "object",
+                "description": "Configuration for install-deps step",
+                "required": ["type"],
+                "properties": {
+                  "type": {
+                    "const": "install-deps"
+                  },
+                  "packages": {
+                    "type": "object",
+                    "properties": {
+                      "prod": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                      },
+                      "dev": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "description": "Configuration for run-command step",
+                "required": ["type", "command"],
+                "properties": {
+                  "type": {
+                    "const": "run-command"
+                  },
+                  "command": {
+                    "type": "string",
+                    "description": "Shell command to execute (supports {{variable}} substitution)",
+                    "minLength": 1
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "description": "Configuration for generate-from-template step",
+                "required": ["type", "files"],
+                "properties": {
+                  "type": {
+                    "const": "generate-from-template"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["destination", "template"],
+                      "properties": {
+                        "destination": {
+                          "type": "string",
+                          "description": "Path where file will be created"
+                        },
+                        "template": {
+                          "type": "string",
+                          "description": "Path to template file relative to preset directory"
+                        },
+                        "variables": {
+                          "type": "object",
+                          "description": "Template variables ({{varName}} replacements)",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "description": "Configuration for copy-file step",
+                "required": ["type", "source", "destination"],
+                "properties": {
+                  "type": {
+                    "const": "copy-file"
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "Path to source file relative to preset directory"
+                  },
+                  "destination": {
+                    "type": "string",
+                    "description": "Path where file will be copied to"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
