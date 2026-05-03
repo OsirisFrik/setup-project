@@ -80,7 +80,8 @@
               "install-deps",
               "run-command",
               "generate-from-template",
-              "copy-file"
+              "copy-file",
+              "copy-files"
             ],
             "description": "Type of step to execute"
           },
@@ -190,6 +191,28 @@
                   "destination": {
                     "type": "string",
                     "description": "Path where file will be copied to"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "description": "Configuration for copy-files step",
+                "required": ["type", "files", "destination"],
+                "properties": {
+                  "type": {
+                    "const": "copy-files"
+                  },
+                  "files": {
+                    "type": "array",
+                    "description": "Array of source files to copy (relative to preset directory)",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "destination": {
+                    "type": "string",
+                    "description": "Destination directory where files will be copied"
                   }
                 }
               }
