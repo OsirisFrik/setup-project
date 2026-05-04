@@ -14,6 +14,10 @@ export function getCustomPresetSource(): string | null {
   return customPresetSource;
 }
 
+export function resetCustomPresetSource(): void {
+  customPresetSource = null;
+}
+
 export function getSetupProDir(): string {
   return join(homedir(), SETUP_PRO_DIR_NAME);
 }

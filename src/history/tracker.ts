@@ -1,4 +1,4 @@
-import { writeFileSync, readFileSync, existsSync } from 'fs';
+import { writeFileSync, readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { getHistoryDir, ensureHistoryDir } from '../utils/paths.ts';
 import type { HistoryEntry, Preset } from '../types.ts';
@@ -38,7 +38,7 @@ export function getHistory(): HistoryEntry[] {
   }
 
   try {
-    const files = require('fs').readdirSync(historyDir);
+    const files = readdirSync(historyDir);
     const entries: HistoryEntry[] = [];
 
     for (const file of files) {
