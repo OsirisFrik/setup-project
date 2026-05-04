@@ -114,9 +114,9 @@ export interface ExecutionContext {
   projectRoot: string;
   presetPath: string;
   packageManager: PackageManager;
-  variables: VariableMap;
   dryRun: boolean;
   verbose: boolean;
+  variables: VariableMap;
 }
 
 export interface ExecutionResult {

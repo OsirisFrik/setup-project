@@ -370,20 +370,6 @@ async function handleApply(args: CliArgs): Promise<void> {
       `${cyan('Package manager:')} ${packageManager.name} ${packageManager.version}`
     );
 
-    console.log(`\n${cyan('Prompting for variables...')}`);
-    const variables = await promptVariables(
-      resolved.steps
-        .flatMap((s) => {
-          if (s.type === 'run-command') {
-            const cmd = (s.config as any).command;
-            const matches = cmd.match(/\{\{(\w+)\}\}/g) || [];
-            return matches.map((m: string) => m.replace(/\{\{|\}\}/g, ''));
-          }
-          return [];
-        })
-        .filter((v, i, arr) => arr.indexOf(v) === i)
-    );
-
     const conflicts = detectConflicts(resolved, projectRoot);
     if (conflicts.length) {
       console.log(
@@ -397,9 +383,9 @@ async function handleApply(args: CliArgs): Promise<void> {
       projectRoot,
       presetPath: getPresetPath(args.presetName),
       packageManager,
-      variables,
       dryRun: args.dryRun,
-      verbose: args.verbose
+      verbose: args.verbose,
+      variables: {}
     };
 
     console.log(`\n${cyan('Executing steps...')}`);

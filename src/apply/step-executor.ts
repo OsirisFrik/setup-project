@@ -12,8 +12,13 @@ import type {
   InstallDepsStepConfig,
   RunCommandStepConfig
 } from '../types.ts';
+import { promptVariables } from '../variables/prompter.ts';
 import { writeFile } from './file-writer.ts';
-import { loadTemplate, processTemplate } from './template-processor.ts';
+import {
+  loadTemplate,
+  processTemplate,
+  detectVariablesInString
+} from './template-processor.ts';
 
 export function orderSteps(steps: Step[]): Step[] {
   const stepsWithOrder = steps.map((step, index) => ({
@@ -30,6 +35,24 @@ export function orderSteps(steps: Step[]): Step[] {
   });
 
   return sorted as Step[];
+}
+
+function detectVariablesInStep(step: Step): string[] {
+  const variables = new Set<string>();
+
+  if (step.type === 'run-command') {
+    const config = step.config as RunCommandStepConfig;
+    detectVariablesInString(config.command).forEach((v) => variables.add(v));
+  } else if (step.type === 'generate-from-template') {
+    const config = step.config as GenerateFromTemplateStepConfig;
+    for (const file of config.files) {
+      if (file.variables) {
+        Object.keys(file.variables).forEach((v) => variables.add(v));
+      }
+    }
+  }
+
+  return Array.from(variables).sort();
 }
 
 export async function executeSteps(
@@ -58,7 +81,17 @@ export async function executeSteps(
         }
       }
 
-      const output = executeStep(step, context);
+      const requiredVariables = detectVariablesInStep(step);
+      const missingVariables = requiredVariables.filter(
+        (v) => !(v in context.variables)
+      );
+
+      if (missingVariables.length > 0 && !context.dryRun) {
+        const newVariables = await promptVariables(missingVariables);
+        context.variables = { ...context.variables, ...newVariables };
+      }
+
+      const output = await executeStep(step, context);
 
       if (context.verbose || context.dryRun) {
         console.log(`[${step.id}] ${step.description || step.type}`);
@@ -87,7 +120,10 @@ export async function executeSteps(
   return result;
 }
 
-function executeStep(step: Step, context: ExecutionContext): string {
+async function executeStep(
+  step: Step,
+  context: ExecutionContext
+): Promise<string> {
   if (context.dryRun) {
     return `[DRY RUN] Would execute ${step.type}`;
   }
@@ -108,7 +144,10 @@ function executeStep(step: Step, context: ExecutionContext): string {
   }
 }
 
-function executeInstallDeps(step: Step, context: ExecutionContext): string {
+async function executeInstallDeps(
+  step: Step,
+  context: ExecutionContext
+): Promise<string> {
   const config = step.config as InstallDepsStepConfig;
   const prodDeps = config.packages?.prod || [];
   const devDeps = config.packages?.dev || [];
@@ -134,7 +173,10 @@ function executeInstallDeps(step: Step, context: ExecutionContext): string {
   return outputs.join('\n');
 }
 
-function executeRunCommand(step: Step, context: ExecutionContext): string {
+async function executeRunCommand(
+  step: Step,
+  context: ExecutionContext
+): Promise<string> {
   const config = step.config as RunCommandStepConfig;
   let command = config.command;
 
@@ -146,10 +188,10 @@ function executeRunCommand(step: Step, context: ExecutionContext): string {
   return executeCommand(command, context.projectRoot);
 }
 
-function executeGenerateFromTemplate(
+async function executeGenerateFromTemplate(
   step: Step,
   context: ExecutionContext
-): string {
+): Promise<string> {
   const config = step.config as GenerateFromTemplateStepConfig;
   const outputs: string[] = [];
 
@@ -157,7 +199,7 @@ function executeGenerateFromTemplate(
     const templatePath = join(context.presetPath, file.template);
     const templateContent = loadTemplate(templatePath);
 
-    const allVariables = { ...context.variables, ...file.variables };
+    const allVariables = { ...file.variables, ...context.variables };
     const processed = processTemplate(templateContent, allVariables);
 
     const destination = join(context.projectRoot, file.destination);
@@ -169,7 +211,10 @@ function executeGenerateFromTemplate(
   return outputs.join('\n');
 }
 
-function executeCopyFile(step: Step, context: ExecutionContext): string {
+async function executeCopyFile(
+  step: Step,
+  context: ExecutionContext
+): Promise<string> {
   const config = step.config as CopyFileStepConfig;
   const source = join(context.presetPath, config.source);
   const destination = join(context.projectRoot, config.destination);
@@ -180,7 +225,10 @@ function executeCopyFile(step: Step, context: ExecutionContext): string {
   return `Copied ${config.source} to ${config.destination}`;
 }
 
-function executeCopyFiles(step: Step, context: ExecutionContext): string {
+async function executeCopyFiles(
+  step: Step,
+  context: ExecutionContext
+): Promise<string> {
   const config = step.config as CopyFilesStepConfig;
   const outputs: string[] = [];
 
@@ -201,7 +249,7 @@ function executeCopyFiles(step: Step, context: ExecutionContext): string {
   return outputs.join('\n');
 }
 
-function executeCommand(command: string, cwd: string): string {
+async function executeCommand(command: string, cwd: string): Promise<string> {
   try {
     const output = execSync(command, {
       cwd,
