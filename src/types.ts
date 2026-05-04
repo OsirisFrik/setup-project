@@ -15,12 +15,8 @@ export type StepType =
   | 'install-deps'
   | 'run-command'
   | 'generate-from-template'
-  | 'copy-file';
-
-export interface Dependencies {
-  prod: string[];
-  dev: string[];
-}
+  | 'copy-file'
+  | 'copy-files';
 
 export interface InstallDepsStepConfig {
   type: 'install-deps';
@@ -52,11 +48,18 @@ export interface CopyFileStepConfig {
   destination: string;
 }
 
+export interface CopyFilesStepConfig {
+  type: 'copy-files';
+  files: string[];
+  destination: string;
+}
+
 export type StepConfig =
   | InstallDepsStepConfig
   | RunCommandStepConfig
   | GenerateFromTemplateStepConfig
-  | CopyFileStepConfig;
+  | CopyFileStepConfig
+  | CopyFilesStepConfig;
 
 export interface Step {
   id: string;
@@ -72,7 +75,6 @@ export interface Preset {
   name: string;
   description: string;
   inherits?: string;
-  dependencies: Dependencies;
   files: Record<string, string>;
   steps: Step[];
 }
@@ -110,6 +112,7 @@ export interface ValidationError {
 
 export interface ExecutionContext {
   projectRoot: string;
+  presetPath: string;
   packageManager: PackageManager;
   variables: VariableMap;
   dryRun: boolean;

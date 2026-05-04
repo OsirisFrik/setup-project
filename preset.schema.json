@@ -3,7 +3,7 @@
   "title": "Setup Project Preset Schema",
   "description": "Schema for setup-project preset configuration files",
   "type": "object",
-  "required": ["id", "name", "description", "dependencies", "files", "steps"],
+  "required": ["id", "name", "description", "files", "steps"],
   "properties": {
     "id": {
       "type": "string",
@@ -29,30 +29,6 @@
       "type": "string",
       "description": "ID of parent preset to inherit from",
       "pattern": "^[a-z0-9-]+$"
-    },
-    "dependencies": {
-      "type": "object",
-      "description": "Package dependencies to install",
-      "required": ["prod", "dev"],
-      "properties": {
-        "prod": {
-          "type": "array",
-          "description": "Production dependencies (npm packages)",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "dev": {
-          "type": "array",
-          "description": "Development dependencies (npm packages)",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      },
-      "additionalProperties": false
     },
     "files": {
       "type": "object",

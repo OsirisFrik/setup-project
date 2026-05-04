@@ -47,14 +47,6 @@ export function resolveInheritance(preset: Preset): ResolvedPreset {
     const parentPreset = loadPreset(preset.inherits);
     const parentResolved = resolveInheritance(parentPreset);
 
-    resolved.dependencies = {
-      prod: [
-        ...parentResolved.dependencies.prod,
-        ...preset.dependencies.prod,
-      ],
-      dev: [...parentResolved.dependencies.dev, ...preset.dependencies.dev],
-    };
-
     resolved.files = {
       ...parentResolved.files,
       ...preset.files,
@@ -141,14 +133,6 @@ export function validatePreset(preset: unknown): ValidationError[] {
     });
   }
 
-  if (!isValidDependencies(p.dependencies)) {
-    errors.push({
-      field: 'dependencies',
-      message:
-        'dependencies must have prod and dev arrays',
-    });
-  }
-
   if (!isValidFiles(p.files)) {
     errors.push({
       field: 'files',
@@ -164,21 +148,6 @@ export function validatePreset(preset: unknown): ValidationError[] {
   }
 
   return errors;
-}
-
-function isValidDependencies(deps: unknown): boolean {
-  if (typeof deps !== 'object' || deps === null) {
-    return false;
-  }
-
-  const d = deps as Record<string, unknown>;
-
-  return (
-    Array.isArray(d.prod) &&
-    d.prod.every((item) => typeof item === 'string') &&
-    Array.isArray(d.dev) &&
-    d.dev.every((item) => typeof item === 'string')
-  );
 }
 
 function isValidFiles(files: unknown): boolean {
@@ -203,7 +172,7 @@ function isValidStep(step: unknown): boolean {
   return (
     typeof s.id === 'string' &&
     typeof s.type === 'string' &&
-    ['install-deps', 'run-command', 'generate-from-template', 'copy-file'].includes(
+    ['install-deps', 'run-command', 'generate-from-template', 'copy-file', 'copy-files'].includes(
       s.type as string
     ) &&
     (typeof s.description === 'string' || typeof s.description === 'undefined') &&

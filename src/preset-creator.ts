@@ -5,6 +5,8 @@ import { getPresetPath, ensurePresetsDir } from './utils/paths.ts';
 import { loadPreset } from './presets/loader.ts';
 import type { Preset } from './types.ts';
 
+const PRESET_SCHEMA_URL = 'https://raw.githubusercontent.com/OsirisFrik/setup-project/refs/heads/main/preset.schema.json';
+
 async function prompt(question: string): Promise<string> {
   return new Promise((resolve) => {
     const rl = createInterface({
@@ -33,43 +35,39 @@ export async function createPresetInteractive(): Promise<void> {
   const inheritsRaw = await prompt('Inherit from another preset? (leave blank for none): ');
   const inherits = inheritsRaw || undefined;
 
+  const prodDeps = await prompt('Production dependencies (comma-separated, or blank): ');
+  const prodDepsArray = prodDeps
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const devDeps = await prompt('Dev dependencies (comma-separated, or blank): ');
+  const devDepsArray = devDeps
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   const preset: Preset = {
     id,
     name,
     description,
     inherits,
-    dependencies: {
-      prod: [],
-      dev: [],
-    },
     files: {},
     steps: [],
   };
 
-  const prodDeps = await prompt('Production dependencies (comma-separated, or blank): ');
-  if (prodDeps) {
-    preset.dependencies.prod = prodDeps
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }
-
-  const devDeps = await prompt('Dev dependencies (comma-separated, or blank): ');
-  if (devDeps) {
-    preset.dependencies.dev = devDeps
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }
-
   // Auto-add install-deps step if dependencies exist
-  if (preset.dependencies.prod.length || preset.dependencies.dev.length) {
+  if (prodDepsArray.length || devDepsArray.length) {
     preset.steps.push({
       id: 'install-deps',
       type: 'install-deps',
       description: 'Install dependencies',
       config: {
         type: 'install-deps',
+        packages: {
+          prod: prodDepsArray,
+          dev: devDepsArray,
+        },
       },
     });
   }
@@ -80,7 +78,11 @@ export async function createPresetInteractive(): Promise<void> {
   mkdirSync(join(presetPath, 'templates'), { recursive: true });
 
   const presetJsonPath = join(presetPath, 'preset.json');
-  writeFileSync(presetJsonPath, JSON.stringify(preset, null, 2), 'utf-8');
+  const presetWithSchema = {
+    $schema: PRESET_SCHEMA_URL,
+    ...preset,
+  };
+  writeFileSync(presetJsonPath, JSON.stringify(presetWithSchema, null, 2), 'utf-8');
 
   console.log(`\n✓ Preset '${id}' created successfully`);
   console.log(`  Location: ${presetPath}`);
@@ -100,24 +102,20 @@ export async function editPreset(presetId: string): Promise<void> {
 
   if (shouldEditDeps.toLowerCase() === 'y') {
     const prodDeps = await prompt('Production dependencies (comma-separated): ');
-    if (prodDeps) {
-      preset.dependencies.prod = prodDeps
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-    }
+    const prodDepsArray = prodDeps
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     const devDeps = await prompt('Dev dependencies (comma-separated): ');
-    if (devDeps) {
-      preset.dependencies.dev = devDeps
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-    }
+    const devDepsArray = devDeps
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     // Update or add install-deps step based on dependencies
     const hasDependencies =
-      preset.dependencies.prod.length || preset.dependencies.dev.length;
+      prodDepsArray.length || devDepsArray.length;
     const hasInstallStep = preset.steps.some((s) => s.id === 'install-deps');
 
     if (hasDependencies && !hasInstallStep) {
@@ -127,8 +125,24 @@ export async function editPreset(presetId: string): Promise<void> {
         description: 'Install dependencies',
         config: {
           type: 'install-deps',
+          packages: {
+            prod: prodDepsArray,
+            dev: devDepsArray,
+          },
         },
       });
+    } else if (hasDependencies && hasInstallStep) {
+      // Update existing install-deps step with new dependencies
+      const installStep = preset.steps.find((s) => s.id === 'install-deps');
+      if (installStep) {
+        installStep.config = {
+          type: 'install-deps',
+          packages: {
+            prod: prodDepsArray,
+            dev: devDepsArray,
+          },
+        };
+      }
     } else if (!hasDependencies && hasInstallStep) {
       preset.steps = preset.steps.filter((s) => s.id !== 'install-deps');
     }
@@ -136,7 +150,11 @@ export async function editPreset(presetId: string): Promise<void> {
 
   const presetPath = getPresetPath(presetId);
   const presetJsonPath = join(presetPath, 'preset.json');
-  writeFileSync(presetJsonPath, JSON.stringify(preset, null, 2), 'utf-8');
+  const presetWithSchema = {
+    $schema: PRESET_SCHEMA_URL,
+    ...preset,
+  };
+  writeFileSync(presetJsonPath, JSON.stringify(presetWithSchema, null, 2), 'utf-8');
 
   console.log(`\n✓ Preset '${presetId}' updated`);
 }

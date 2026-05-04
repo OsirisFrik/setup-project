@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { detectConflicts, resolveConflicts } from './apply/conflict-handler.ts';
 import { executeSteps } from './apply/step-executor.ts';
-import { green, yellow, red, cyan } from './colors.ts';
+import { green, yellow, red, cyan, write, SHOW_CURSOR } from './colors.ts';
 import { recordApplication } from './history/tracker.ts';
 import { detectPackageManager } from './package-manager/detector.ts';
 import {
@@ -41,6 +41,11 @@ const VERSION: string = (() => {
   }
   return '0.0.0';
 })();
+
+process.on('SIGINT', () => {
+  write(SHOW_CURSOR + '\n');
+  process.exit(130);
+});
 
 type Command = 'preset' | 'apply' | 'help';
 type PresetAction = 'create' | 'list' | 'delete' | 'edit' | 'open' | 'detail';
@@ -258,16 +263,6 @@ async function handleDetail(presetId: string): Promise<void> {
     }
     console.log(`  ${preset.description}`);
 
-    if (resolved.dependencies.prod.length || resolved.dependencies.dev.length) {
-      console.log(`\n  ${cyan('Dependencies:')}`);
-      if (resolved.dependencies.prod.length) {
-        console.log(`    Production: ${resolved.dependencies.prod.join(', ')}`);
-      }
-      if (resolved.dependencies.dev.length) {
-        console.log(`    Development: ${resolved.dependencies.dev.join(', ')}`);
-      }
-    }
-
     if (Object.keys(resolved.files).length) {
       console.log(`\n  ${cyan('Files:')}`);
       for (const [dest, src] of Object.entries(resolved.files)) {
@@ -400,6 +395,7 @@ async function handleApply(args: CliArgs): Promise<void> {
 
     const context: ExecutionContext = {
       projectRoot,
+      presetPath: getPresetPath(args.presetName),
       packageManager,
       variables,
       dryRun: args.dryRun,

@@ -1,23 +1,25 @@
 import { execSync } from 'child_process';
 import { join } from 'path';
+
+import { buildInstallCommand } from '../package-manager/detector.ts';
 import type {
   Step,
   ExecutionContext,
   ExecutionResult,
   CopyFileStepConfig,
+  CopyFilesStepConfig,
   GenerateFromTemplateStepConfig,
   InstallDepsStepConfig,
-  RunCommandStepConfig,
+  RunCommandStepConfig
 } from '../types.ts';
-import { buildInstallCommand } from '../package-manager/detector.ts';
-import { loadTemplate, processTemplate } from './template-processor.ts';
 import { writeFile } from './file-writer.ts';
+import { loadTemplate, processTemplate } from './template-processor.ts';
 
 export function orderSteps(steps: Step[]): Step[] {
   const stepsWithOrder = steps.map((step, index) => ({
     ...step,
     _index: index,
-    _order: step.order ?? index,
+    _order: step.order ?? index
   }));
 
   const sorted = stepsWithOrder.sort((a, b) => {
@@ -38,7 +40,7 @@ export async function executeSteps(
     success: true,
     stepsExecuted: [],
     output: [],
-    errors: [],
+    errors: []
   };
 
   const orderedSteps = orderSteps(steps);
@@ -59,9 +61,7 @@ export async function executeSteps(
       const output = executeStep(step, context);
 
       if (context.verbose || context.dryRun) {
-        console.log(
-          `[${step.id}] ${step.description || step.type}`
-        );
+        console.log(`[${step.id}] ${step.description || step.type}`);
         if (output) {
           console.log(output);
         }
@@ -101,6 +101,8 @@ function executeStep(step: Step, context: ExecutionContext): string {
       return executeGenerateFromTemplate(step, context);
     case 'copy-file':
       return executeCopyFile(step, context);
+    case 'copy-files':
+      return executeCopyFiles(step, context);
     default:
       throw new Error(`Unknown step type: ${step.type}`);
   }
@@ -152,10 +154,7 @@ function executeGenerateFromTemplate(
   const outputs: string[] = [];
 
   for (const file of config.files) {
-    const templatePath = join(
-      context.projectRoot,
-      file.template
-    );
+    const templatePath = join(context.presetPath, file.template);
     const templateContent = loadTemplate(templatePath);
 
     const allVariables = { ...context.variables, ...file.variables };
@@ -172,7 +171,7 @@ function executeGenerateFromTemplate(
 
 function executeCopyFile(step: Step, context: ExecutionContext): string {
   const config = step.config as CopyFileStepConfig;
-  const source = join(context.projectRoot, config.source);
+  const source = join(context.presetPath, config.source);
   const destination = join(context.projectRoot, config.destination);
 
   const content = loadTemplate(source);
@@ -181,19 +180,42 @@ function executeCopyFile(step: Step, context: ExecutionContext): string {
   return `Copied ${config.source} to ${config.destination}`;
 }
 
+function executeCopyFiles(step: Step, context: ExecutionContext): string {
+  const config = step.config as CopyFilesStepConfig;
+  const outputs: string[] = [];
+
+  for (const file of config.files) {
+    const source = join(context.presetPath, file);
+    const destinationPath = join(
+      context.projectRoot,
+      config.destination,
+      file.split('/').pop() || ''
+    );
+
+    const content = loadTemplate(source);
+    writeFile(destinationPath, content);
+
+    outputs.push(`Copied ${file} to ${config.destination}`);
+  }
+
+  return outputs.join('\n');
+}
+
 function executeCommand(command: string, cwd: string): string {
   try {
     const output = execSync(command, {
       cwd,
       encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe']
     });
 
     return output.trim();
   } catch (error) {
     if (error instanceof Error && 'stdout' in error) {
-      const stdout = (error as Record<string, unknown>).stdout as string || '';
-      const stderr = (error as Record<string, unknown>).stderr as string || '';
+      const stdout =
+        ((error as Record<string, unknown>).stdout as string) || '';
+      const stderr =
+        ((error as Record<string, unknown>).stderr as string) || '';
       throw new Error(`Command failed: ${command}\n${stdout}\n${stderr}`);
     }
     throw new Error(
