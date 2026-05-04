@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-`setup-project` is a Node.js CLI tool (`uppro`) for managing and applying reusable project configuration presets. Presets live in `~/.setuppro/presets/` and support inheritance, template variable substitution (`{{variableName}}`), and sequential step execution with dependency ordering.
+`setup-project` is a Node.js CLI tool (`uppro`) for managing and applying reusable project configuration presets. Presets live in `~/.uppro/presets/` and support inheritance, template variable substitution (`{{variableName}}`), and sequential step execution with dependency ordering.
 
 **Requires:** Node.js >= 22.6.0
 
@@ -43,10 +43,10 @@ No test runner is configured yet — Vitest is planned (see PLAN.md).
 - `src/variables/prompter.ts` — detects `{{variable}}` placeholders; prompts user interactively
 - `src/apply/` — conflict detection, template processing, step execution, file writing
 - `src/package-manager/detector.ts` — auto-detects npm/yarn/pnpm/bun from lock files
-- `src/utils/paths.ts` — helpers for `~/.setuppro/` directory paths
-- `src/history/tracker.ts` — records applied presets to `~/.setuppro/.history/`
+- `src/utils/paths.ts` — helpers for `~/.uppro/` directory paths
+- `src/history/tracker.ts` — records applied presets to `~/.uppro/.history/`
 
-**Preset schema** (stored as `~/.setuppro/presets/<id>/preset.json`): supports `inherits` for parent preset chaining; `files` map destination→template; `steps` array with `type`, `dependsOn`, and `order` fields.
+**Preset schema** (stored as `~/.uppro/presets/<id>/preset.json`): supports `inherits` for parent preset chaining; `files` map destination→template; `steps` array with `type`, `dependsOn`, and `order` fields.
 
 **Execution flow** (planned, see PLAN.md): load preset → detect package manager → detect/prompt variables → detect conflicts → dry-run preview → confirm → execute steps → record history → summary.
 

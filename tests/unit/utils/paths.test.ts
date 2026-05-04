@@ -1,14 +1,15 @@
-import { test, describe, afterEach } from 'node:test';
 import { strictEqual, ok } from 'node:assert';
-import { join } from 'path';
+import { test, describe, afterEach } from 'node:test';
 import { homedir } from 'os';
+import { join } from 'path';
+
 import {
   getPresetsDir,
   getPresetPath,
   setCustomPresetSource,
   getCustomPresetSource,
   resetCustomPresetSource,
-  getSetupProDir,
+  getSetupProDir
 } from '../../../src/utils/paths.ts';
 
 describe('paths utilities', () => {
@@ -17,16 +18,16 @@ describe('paths utilities', () => {
   });
 
   describe('getSetupProDir', () => {
-    test('returns .setuppro directory under home', () => {
+    test('returns .uppro directory under home', () => {
       const result = getSetupProDir();
-      strictEqual(result, join(homedir(), '.setuppro'));
+      strictEqual(result, join(homedir(), '.uppro'));
     });
   });
 
   describe('getPresetsDir', () => {
     test('returns default presets dir when no custom source is set', () => {
       const result = getPresetsDir();
-      strictEqual(result, join(homedir(), '.setuppro', 'presets'));
+      strictEqual(result, join(homedir(), '.uppro', 'presets'));
     });
 
     test('returns custom preset source when set', () => {
@@ -38,14 +39,14 @@ describe('paths utilities', () => {
     test('returns default presets dir after reset', () => {
       setCustomPresetSource('/tmp/custom');
       resetCustomPresetSource();
-      strictEqual(getPresetsDir(), join(homedir(), '.setuppro', 'presets'));
+      strictEqual(getPresetsDir(), join(homedir(), '.uppro', 'presets'));
     });
   });
 
   describe('getPresetPath', () => {
     test('returns path to preset in default dir', () => {
       const result = getPresetPath('my-preset');
-      strictEqual(result, join(homedir(), '.setuppro', 'presets', 'my-preset'));
+      strictEqual(result, join(homedir(), '.uppro', 'presets', 'my-preset'));
     });
 
     test('returns path to preset in custom dir', () => {
@@ -91,7 +92,7 @@ describe('paths utilities', () => {
     test('affects getPresetsDir after reset', () => {
       setCustomPresetSource('/custom');
       resetCustomPresetSource();
-      strictEqual(getPresetsDir(), join(homedir(), '.setuppro', 'presets'));
+      strictEqual(getPresetsDir(), join(homedir(), '.uppro', 'presets'));
     });
   });
 });

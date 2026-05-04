@@ -93,7 +93,7 @@ setup-project/
 │   ├── package-manager/
 │   │   └── detector.ts          # Package manager detection
 │   ├── utils/
-│   │   └── paths.ts             # Path utilities for ~/.setuppro/
+│   │   └── paths.ts             # Path utilities for ~/.uppro/
 │   └── history/
 │       └── tracker.ts           # Application history
 ├── preset.schema.json           # JSON schema for validation
@@ -102,7 +102,7 @@ setup-project/
 
 ## 📝 Preset Format
 
-Presets are stored in `~/.setuppro/presets/<id>/preset.json`:
+Presets are stored in `~/.uppro/presets/<id>/preset.json`:
 
 ```json
 {

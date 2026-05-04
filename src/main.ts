@@ -27,7 +27,6 @@ import {
   getPresetPath,
   setCustomPresetSource
 } from './utils/paths.ts';
-import { promptVariables } from './variables/prompter.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const VERSION: string = (() => {

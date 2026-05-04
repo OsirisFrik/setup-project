@@ -1,8 +1,8 @@
+import { mkdirSync } from 'fs';
 import { homedir } from 'os';
 import { join, resolve } from 'path';
-import { mkdirSync } from 'fs';
 
-const SETUP_PRO_DIR_NAME = '.setuppro';
+const SETUP_PRO_DIR_NAME = '.uppro';
 
 let customPresetSource: string | null = null;
 
