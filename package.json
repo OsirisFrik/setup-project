@@ -1,19 +1,36 @@
 {
-  "name": "setup-project",
+  "name": "uppro",
   "version": "0.0.1",
-  "description": "",
-  "keywords": [],
-  "license": "ISC",
+  "description": "A CLI tool for managing and applying reusable project configuration presets with inheritance, templates, and step automation",
+  "keywords": [
+    "automation",
+    "cli",
+    "configuration",
+    "preset",
+    "project-setup",
+    "scaffold",
+    "setup"
+  ],
+  "homepage": "https://github.com/OsirisFrik/setup-project",
+  "bugs": {
+    "url": "https://github.com/OsirisFrik/setup-project/issues"
+  },
+  "license": "CC-BY-NC-4.0",
   "author": "OsirisFrik",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OsirisFrik/setup-project.git"
+  },
   "bin": {
     "uppro": "./index.mjs"
   },
   "files": [
     "index.mjs",
-    "dist/"
+    "dist/",
+    "preset.schema.json"
   ],
   "type": "module",
-  "main": "index.js",
+  "main": "dist/main.js",
   "scripts": {
     "build": "tsc"
   },
@@ -21,5 +38,9 @@
     "@types/node": "^25.6.0",
     "oxfmt": "^0.47.0",
     "typescript": "^6.0.3"
+  },
+  "preferGlobal": true,
+  "engines": {
+    "node": ">=22.6.0"
   }
 }

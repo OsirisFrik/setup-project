@@ -1,4 +1,4 @@
-// this block code taken from https://github.com/midudev/autoskills
+// this code block taken from https://github.com/midudev/autoskills
 
 import {
   log,

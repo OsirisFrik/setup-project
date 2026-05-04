@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// this block code taken from https://github.com/midudev/autoskills
+// this code block taken from https://github.com/midudev/autoskills
 
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -10,7 +10,7 @@ const [major, minor] = process.versions.node.split('.').map(Number);
 
 if (major < 22 || (major === 22 && minor < 6)) {
   console.error(
-    `\n  ⚠ autoskills requires Node.js >= 22.6.0.` +
+    `\n  ⚠ setup-project requires Node.js >= 22.6.0.` +
       `\n  Current version: ${process.version}` +
       `\n  Please upgrade → https://nodejs.org\n`
   );
